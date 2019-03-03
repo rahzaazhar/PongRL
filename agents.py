@@ -48,12 +48,13 @@ def one_hot_encoding(actionindex):
 
 def discount_rewards(r,gamma):
 
-	discounted_r = np.zeros_like(r)
+	discounted_r = []
 	running_add = 0
-	for t in reversed(xrange(0, r.size)):
+	for t in reversed(range(0, len(r))):
 		if r[t] != 0: running_add = 0# reset the sum, since this was a game boundary (pong specific!)
 		running_add = running_add * gamma + r[t]
-		discounted_r[t] = running_add
+		discounted_r.append(running_add)
+	discounted_r = reversed(discounted_r)
 	return discounted_r
 
 def prepro(I):
@@ -66,7 +67,14 @@ def prepro(I):
 	I = np.expand_dims(I,axis=0)
 	I = np.expand_dims(I,axis=0)
 
-	return torch.from_numpy(I) 
+	return torch.from_numpy(I)
+
+def stackprob(l):
+	c = torch.zeros(len(l),2)
+	for i in range(len(l)):
+		c[i] = l[i]
+		#print(c[i])
+	return c
 
 def PolicyGradient(Total_episodes,batch_size,discount_factor):
 	print("enter policy")
@@ -87,9 +95,9 @@ def PolicyGradient(Total_episodes,batch_size,discount_factor):
 	prob=[]
 	targets=[]
 	eprew=[]
-	prob_batch=[]
-	targets_batch=[]
-	discounted_rew=[]
+	prob_batch= None
+	targets_batch= None
+	discounted_rew= None
 	for episode_number in range(Total_episodes):
 		reward_sum=0
 		cnt = 0
@@ -101,13 +109,11 @@ def PolicyGradient(Total_episodes,batch_size,discount_factor):
 			#print(cur_x.type())
 			x = cur_x - prev_x if prev_x is not None else torch.zeros(1,1,80,80)
 			x = x.type(torch.FloatTensor)
-			#print(x.type())
 			prev_x = cur_x
 			# forward the policy network and sample an action from the returned probability
 			aprob = agent.Policypred(x)
-			print(aprob)
 			actionindex = int(torch.argmax(aprob))
-			target = one_hot_encoding(actionindex)
+			target = actionindex
 			sampled_action = 2 if actionindex==0 else 3
 			observation, reward, done , info = env.step(sampled_action)
 			prob.append(aprob)
@@ -121,25 +127,33 @@ def PolicyGradient(Total_episodes,batch_size,discount_factor):
 				print("Episode {} finished after {} timesteps total reward:{}".format(episode_number+1,cnt,reward_sum))
 				break
 		if (episode_number+1)%batch_size==0:
-			prob_batch = np.vstack(prob)
-			targets_batch = np.vstack(targets)
+			prob_batch = stackprob(prob)
+			targets_batch = torch.LongTensor(targets)
 			discounted_rew = np.vstack(discount_rewards(eprew,discount_factor))
-			discounted_rew -= np.mean(discounted_epr)
-			discounted_rew /= np.std(discounted_epr)
+			discounted_rew -= np.mean(discounted_rew)
+			discounted_rew /= np.std(discounted_rew)
+			#print(discounted_rew)
+			#print(prob_batch)
+			discounted_rew = torch.from_numpy(discounted_rew).type(torch.FloatTensor)
 			optimizer.zero_grad()
 			outputs = prob_batch*discounted_rew
+
+			#print(outputs)
+			#targets_batch = torch.from_numpy(targets_batch).type(torch.LongTensor)
+			#print(targets_batch.size())
+			#print(targets_batch)
 			loss = criterion(outputs, targets_batch)
 			loss.backward()
 			optimizer.step()
-			prob=[]
-			targets=[]
-			eprew=[]
-			prob_batch=[]
-			targets_batch=[]
-			discounted_rew=[]
+			prob.clear()
+			targets.clear()
+			eprew.clear()
+			prob_batch=None
+			targets_batch=None
+			discounted_rew=None
 
 #if __name__ == "main":
-max_episodes=10
+max_episodes=50
 batch_size=2
 discount=0.99
 print("enter main")
