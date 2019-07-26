@@ -1,2 +1,2 @@
-# PongRL
-Learning to play Pong using different RL methods.
+## PongRL
+#Learning to play Pong using different RL methods.
