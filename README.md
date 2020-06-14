@@ -1,2 +1,5 @@
 ## PongRL
-#Learning to play Pong using different RL methods.
+# Learning to play Pong using Vanilla Policy Gradients.
+```
+python 
+```
