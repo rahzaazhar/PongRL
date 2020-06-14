@@ -25,14 +25,14 @@ class PolicyNN(nn.Module):
 		x = F.softmax(self.fc2(x),dim=-1)
 		return x
 
-	def init_weights(self,initialisation="Xavier"):
+	def init_weights(self,initialisation="Xavier",path=None):
 	
 		if(initialisation=="Xavier"):
 			for parameter in self.parameters():
 				if parameter.ndimension() == 2:
 					torch.nn.init.xavier_uniform(parameter, gain=0.01)
 		if(initialisation=="loadweights"):
-			self.load_state_dict(torch.load("/home/azhar/projects/pong/weightsAdam1/weightV1.0_trained1200.pt", map_location="cuda:0"))
+			self.load_state_dict(torch.load(path, map_location="cuda:0"))
 
 
 def discount_rewards(r,gamma):
@@ -78,12 +78,12 @@ def plotgraph(reward,episode,rreward):
 		plt.clf()
 		plt.plot(episode, reward, label="reward per episode")
 		plt.legend()
-		str1 = '/home/azhar/projects/pong/plots/reward-VS-episodeV1.0new.png'
+		str1 = 'reward-VS-episode.png'
 		fig.savefig(str1)
 		plt.clf()
 		plt.plot(episode, rreward, label="running reward per episode")
 		plt.legend()
-		str1 = '/home/azhar/projects/pong/plots/runningreward-VS-episode1_V1.0new.png'
+		str1 = 'runningreward-VS-episode.png'
 		fig.savefig(str1)
 
 
@@ -97,7 +97,7 @@ def PolicyGradient(Total_episodes,batch_size,discount_factor,epsilon):
 	prev_x = None# used in computing the difference frame
 	running_reward = None
 	reward_sum = 0
-	episode_number = 1100
+	episode_number = 1
 	prob=[]
 	eprew=[]
 	reward=0
@@ -154,7 +154,7 @@ def PolicyGradient(Total_episodes,batch_size,discount_factor,epsilon):
 
 			if episode_number%batch_size==0 and episode_number!=0:
 				
-				print("----------------------------------------accumulated gradients-----------------------------------")
+				'''print("----------------------------------------accumulated gradients-----------------------------------")
 				print("----------------------------------------gradiets for fc1 layer-----------------------------------")
 				print(agent.fc1.weight.grad.sum())
 				print("----------------------------------------gradiets for fc2 layer-----------------------------------")
@@ -167,28 +167,30 @@ def PolicyGradient(Total_episodes,batch_size,discount_factor,epsilon):
 				print(agent.fc2.weight.sum())
 				optimizer.step()
 				print("-----------------------------------------after optimizer step---------------------------------------")
-				print("----------------------------------------gradiets for fc1 layer-----------------------------------")
+				print("----------------------------------------weights for fc1 layer-----------------------------------")
 				print(agent.fc1.weight.sum())
-				print("----------------------------------------gradiets for fc2 layer-----------------------------------")
-				print(agent.fc2.weight.sum())
+				print("----------------------------------------weights for fc2 layer-----------------------------------")
+				print(agent.fc2.weight.sum())'''
+				optimizer.step()
 				optimizer.zero_grad()
+
 		if episode_number%100==0 and episode_number!=0:
 			#epsilon=epsilon/episode_number
-			torch.save(agent.state_dict(),"/home/azhar/projects/pong/weightsAdam1/weightV1.0_trained"+str(episode_number)+".pt")
+			torch.save(agent.state_dict(),"weightepN"+str(episode_number)+".pt")
 			
 
 max_episodes=1000
 batch_size=2
 discount=0.99
-epsilon=0.2
+epsilon=0.1
 fig=plt.figure()
-print("enter main")
 idx_actionmap={0:2,1:3}
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 agent = PolicyNN()
 agent.to(device)
-agent.init_weights("loadweights")
+saved_model = "saved_model.pt"
+agent.init_weights("loadweights",saved_model)
 
 #agent.load_state_dict(torch.load("/home/azhar/projects/pong/weights/weight600.pt", map_location="cuda:0"))
 
@@ -199,6 +201,6 @@ agent.init_weights("loadweights")
 learning_rate = 1e-4
 optimizer = torch.optim.Adam(agent.parameters(), lr=learning_rate)
 optimizer.zero_grad()
-PolicyGradient(max_episodes,batch_size,discount,0.2)			
+PolicyGradient(max_episodes,batch_size,discount,epsilon)			
 			
 
